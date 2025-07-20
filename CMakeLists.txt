@@ -26,6 +26,7 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(katam-minimap
     src/main.c
+    src/network.c
 )
 
 target_include_directories(katam-minimap PUBLIC include)

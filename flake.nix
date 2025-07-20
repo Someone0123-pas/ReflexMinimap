@@ -54,6 +54,7 @@
       inputsFrom = [ self.packages.${system}.default ];
 
       packages = with pkgs; [
+  gdb
 	clang-tools
       ];
     };
