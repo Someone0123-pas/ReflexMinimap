@@ -1,0 +1,18 @@
+CompileFlags:
+  Add: [
+    -Wall,
+    -Wextra,
+    -Wno-gnu-statement-expression-from-macro-expansion
+  ]
+
+Diagnostics:
+  ClangTidy:
+    Add: [
+      bugprone-*,
+      performance-*,
+      portability-*,
+      modernize-*,
+      clang-analyzer-*,
+    ]
+    Remove: [
+    ]

@@ -23,6 +23,19 @@
 	cmake
 	ninja
 	wget
+    pkg-config
+
+    # Wayland dependencies
+    wayland-scanner
+    libxkbcommon
+    libffi
+
+    # X11 dependencies
+    xorg.libX11
+    xorg.libXrandr
+    xorg.libXinerama
+    xorg.libXcursor
+    xorg.libXi
       ];
 
       buildInputs = with pkgs; [
