@@ -26,8 +26,18 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(katam-minimap
     src/main.c
-    src/network.c
+    src/socket.c
 )
 
 target_include_directories(katam-minimap PUBLIC include)
 target_link_libraries(katam-minimap PRIVATE raylib)
+
+target_compile_definitions(katam-minimap PRIVATE
+    $<$<CONFIG:debug>:DEBUG>
+    $<$<CONFIG:debug>:LOGGING>
+    $<$<CONFIG:release>:NDEBUG>
+)
+
+target_compile_options(katam-minimap PRIVATE
+    $<$<CONFIG:debug>:-O1>
+)
