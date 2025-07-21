@@ -1,16 +1,5 @@
-#include <errno.h>
-#include <stdio.h>
-
 #include "error.h"
 #include "socket.h"
-
-#define EXIT_ERR(message) \
-    ({                    \
-        perror(message);  \
-        return errno;     \
-    })
-
-#define NO_IMPL_EXIT(functionname) ({ fprintf(stderr, "%s returned an unknown result.\n", functionname); })
 
 int main() {
     result_t socket_init_res = socket_init();
@@ -27,17 +16,19 @@ int main() {
         NO_IMPL_EXIT("socket_init()");
     }
 
-    result_t socket_close_res = socket_close();
-    switch (socket_close_res) {
+    result_t socket_connect_res = socket_connect();
+    switch (socket_connect_res) {
     case OK:
         break;
-    case SOCKET_CLOSE_ACTIVE:
-        EXIT_ERR("In socket_close(), with close(active_socket)");
-    case SOCKET_CLOSE_LISTENING:
-        EXIT_ERR("In socket_close(), with close(listening_socket)");
+    case SOCKET_CONNECT_LISTENING_SOCKET_NOT_SET:
+        fprintf(stderr, "Attempted to call socket_connect() without setting listening socket! Was socket_init() already called?");
+        return 1;
+    case SOCKET_CONNECT_ACCEPT:
+        EXIT_ERR("In socket_connect(), with accept()");
     default:
-        NO_IMPL_EXIT("socket_close()");
+        NO_IMPL_EXIT("socket_connect()");
     }
 
+    socket_close();
     return 0;
 }

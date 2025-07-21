@@ -24,6 +24,7 @@ endif()
 
 FetchContent_MakeAvailable(raylib)
 
+# === Katam-Minimap ===
 add_executable(katam-minimap
     src/main.c
     src/socket.c

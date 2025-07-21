@@ -56,6 +56,7 @@
       packages = with pkgs; [
   gdb
 	clang-tools
+  mgba
       ];
     };
   });

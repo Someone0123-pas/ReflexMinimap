@@ -19,6 +19,8 @@ result_t socket_init() {
     THROW_IFEQ(SOCKET_INIT_SOCKET, listening_socket, -1);
     LOG("socket_init(): Created socket with fd %d.", listening_socket);
 
+    // TODO: SO_REUSEADDR with setsockopts
+
     struct sockaddr_in socket_address = {
         .sin_family = AF_INET,
         .sin_port = htons(2346),
@@ -35,22 +37,45 @@ result_t socket_init() {
 
     s_listening_socket = listening_socket;
     LOG("socket_init(): Socket %d is registered in s_listening_socket.", listening_socket);
+    return OK;
+}
 
+result_t socket_connect() {
+    THROW_IFEQ(SOCKET_CONNECT_LISTENING_SOCKET_NOT_SET, s_listening_socket, 0);
+
+    socket_t active_socket = accept(s_listening_socket, NULL, NULL);
+    THROW_IFEQ(SOCKET_CONNECT_ACCEPT, active_socket, -1);
+    LOG("socket_connect(): Socket %d is now connected with a client.", active_socket);
+
+    s_active_socket = active_socket;
+    LOG("socket_connect(): Socket %d is registered in s_active_socket.", active_socket);
     return OK;
 }
 
 result_t socket_close() {
+    result_t res = OK;
+
     if (s_active_socket) {
         int close_res = close(s_active_socket);
-        THROW_IFEQ(SOCKET_CLOSE_ACTIVE, close_res, -1);
-        LOG("Active socket %d has been closed.", s_active_socket);
+        if (close_res == -1) {
+            WARN("socket_close(): Active socket %d could not be closed.", s_active_socket);
+            res = SOCKET_CLOSE_ACTIVE;
+        } else {
+            LOG("socket_close(): Active socket %d has been closed.", s_active_socket);
+        }
+        s_active_socket = 0;
     }
 
     if (s_listening_socket) {
         int close_res = close(s_listening_socket);
-        THROW_IFEQ(SOCKET_CLOSE_LISTENING, close_res, -1);
-        LOG("Listening socket %d has been closed.", s_listening_socket);
+        if (close_res == -1) {
+            WARN("socket_close(): Listening socket %d could not be closed.", s_listening_socket);
+            res = SOCKET_CLOSE_LISTENING;
+        } else {
+            LOG("socket_close(): Listening socket %d has been closed.", s_listening_socket);
+        }
+        s_listening_socket = 0;
     }
 
-    return OK;
+    return res;
 }
