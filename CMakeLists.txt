@@ -33,9 +33,9 @@ target_include_directories(katam-minimap PUBLIC include)
 target_link_libraries(katam-minimap PRIVATE raylib)
 
 target_compile_definitions(katam-minimap PRIVATE
-    $<$<CONFIG:debug>:DEBUG>
-    $<$<CONFIG:debug>:LOGGING>
-    $<$<CONFIG:release>:NDEBUG>
+    $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:Debug>:LOGGING>
+    $<$<CONFIG:Release>:NDEBUG>
 )
 
 target_compile_options(katam-minimap PRIVATE
