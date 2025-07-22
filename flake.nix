@@ -20,15 +20,10 @@
       src = ./.;
 
       nativeBuildInputs = with pkgs; [
-	cmake
-	ninja
-	wget
-    pkg-config
-
-    # Wayland dependencies
-    wayland-scanner
-    libxkbcommon
-    libffi
+	      cmake
+	      ninja
+	      wget
+        pkg-config
 
     # X11 dependencies
     xorg.libX11
@@ -39,8 +34,11 @@
       ];
 
       buildInputs = with pkgs; [
-	wayland
-	libGL
+	  wayland
+    wayland-scanner
+    libxkbcommon
+    libffi
+	  libGL
       ];
     };
   in {
@@ -54,10 +52,15 @@
       inputsFrom = [ self.packages.${system}.default ];
 
       packages = with pkgs; [
-  gdb
-	clang-tools
-  mgba
+        gdb
+	      clang-tools
+        mgba
       ];
+
+      LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
+        wayland
+        libxkbcommon
+      ]);
     };
   });
 }

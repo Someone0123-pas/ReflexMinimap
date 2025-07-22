@@ -11,15 +11,19 @@ typedef int socket_t;
 #include "log.h"
 #include "socket.h"
 
-static socket_t s_listening_socket = 0;
-static socket_t s_active_socket = 0;
+#define NO_SOCKET (-1)
 
-result_t socket_init() {
+static socket_t s_listening_socket = NO_SOCKET;
+static socket_t s_active_socket = NO_SOCKET;
+
+[[nodiscard]] result_t socket_init() {
     socket_t listening_socket = socket(AF_INET, SOCK_STREAM, 0);
     THROW_IFEQ(SOCKET_INIT_SOCKET, listening_socket, -1);
     LOG("socket_init(): Created socket with fd %d.", listening_socket);
 
-    // TODO: SO_REUSEADDR with setsockopts
+    int reuseaddr = 1;
+    setsockopt(listening_socket, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
+    THROW_IFEQ(SOCKET_INIT_SETSOCKOPT, listening_socket, -1);
 
     struct sockaddr_in socket_address = {
         .sin_family = AF_INET,
@@ -40,7 +44,7 @@ result_t socket_init() {
     return OK;
 }
 
-result_t socket_connect() {
+[[nodiscard]] result_t socket_connect() {
     THROW_IFEQ(SOCKET_CONNECT_LISTENING_SOCKET_NOT_SET, s_listening_socket, 0);
 
     socket_t active_socket = accept(s_listening_socket, NULL, NULL);
@@ -55,7 +59,7 @@ result_t socket_connect() {
 result_t socket_close() {
     result_t res = OK;
 
-    if (s_active_socket) {
+    if (s_active_socket != NO_SOCKET) {
         int close_res = close(s_active_socket);
         if (close_res == -1) {
             WARN("socket_close(): Active socket %d could not be closed.", s_active_socket);
@@ -63,10 +67,10 @@ result_t socket_close() {
         } else {
             LOG("socket_close(): Active socket %d has been closed.", s_active_socket);
         }
-        s_active_socket = 0;
+        s_active_socket = NO_SOCKET;
     }
 
-    if (s_listening_socket) {
+    if (s_listening_socket != NO_SOCKET) {
         int close_res = close(s_listening_socket);
         if (close_res == -1) {
             WARN("socket_close(): Listening socket %d could not be closed.", s_listening_socket);
@@ -74,7 +78,7 @@ result_t socket_close() {
         } else {
             LOG("socket_close(): Listening socket %d has been closed.", s_listening_socket);
         }
-        s_listening_socket = 0;
+        s_listening_socket = NO_SOCKET;
     }
 
     return res;

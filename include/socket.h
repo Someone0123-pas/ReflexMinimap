@@ -10,6 +10,7 @@ result_t socket_init();
 #define SOCKET_INIT_SOCKET 1
 #define SOCKET_INIT_BIND 2
 #define SOCKET_INIT_LISTEN 3
+#define SOCKET_INIT_SETSOCKOPT 4
 
 /*
  * Blocks until a client wants to connect.

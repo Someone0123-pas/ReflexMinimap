@@ -5,22 +5,11 @@
 #include <stdio.h>
 
 /*
- * Functions which return result_t must have their return values defined as preprocessor definitions in the header file, where OK must always indicate
+ * Functions which return result_t should have their return values defined as preprocessor definitions in the header file, where OK must always indicate
  * success.
  */
 typedef int result_t;
 #define OK 0
-
-/*
- * Should only be used by main()
- */
-#define EXIT_ERR(message)      \
-    ({                         \
-        perror(message);       \
-        int cur_errno = errno; \
-        socket_close();        \
-        return cur_errno;      \
-    })
 
 #define THROW_IFEQ(errorcode, variable, erroneousvalue) \
     ({                                                  \
@@ -29,6 +18,12 @@ typedef int result_t;
         }                                               \
     })
 
-#define NO_IMPL_EXIT(functionname) ({ fprintf(stderr, "%s returned an unknown result.\n", functionname); })
+#define NO_IMPL_EXIT(functionname)                                         \
+    ({                                                                     \
+        fprintf(stderr, "%s returned an unknown result.\n", functionname); \
+        return 1;                                                          \
+    })
+
+extern char* g_errorstr[0x100];
 
 #endif  // ERROR_H
