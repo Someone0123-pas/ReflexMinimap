@@ -3,12 +3,19 @@
 
 #include <stdio.h>
 
-#ifdef LOGGING
-#define LOG(logmessage, ...) ({ fprintf(stderr, "[LOG]  " logmessage "\n" __VA_OPT__(, ) __VA_ARGS__); })
-#define WARN(warnmessage, ...) ({ fprintf(stderr, "[WARN] " warnmessage "\n" __VA_OPT__(, ) __VA_ARGS__); })
-#else
-#define LOG(logmessage, ...) ({})
-#define WARN(warnmessage, ...) ({})
-#endif
+extern bool g_logging_enabled;
+
+#define LOG(logmessage, ...)                                                       \
+    ({                                                                             \
+        if (g_logging_enabled) {                                                   \
+            fprintf(stderr, "[LOG]  " logmessage "\n" __VA_OPT__(, ) __VA_ARGS__); \
+        }                                                                          \
+    })
+#define WARN(warnmessage, ...)                                                      \
+    ({                                                                              \
+        if (g_logging_enabled) {                                                    \
+            fprintf(stderr, "[WARN] " warnmessage "\n" __VA_OPT__(, ) __VA_ARGS__); \
+        }                                                                           \
+    })
 
 #endif  // LOG_H

@@ -1,12 +1,9 @@
 #ifndef ERROR_H
 #define ERROR_H
 
-#include <errno.h>
-#include <stdio.h>
-
 /*
- * Functions which return result_t should have their return values defined as preprocessor definitions in the header file, where OK must always indicate
- * success.
+ * Functions which return result_t should have their return values defined as preprocessor definitions in the header file, where OK must always
+ * indicate success.
  */
 typedef int result_t;
 #define OK 0
@@ -18,12 +15,9 @@ typedef int result_t;
         }                                               \
     })
 
-#define NO_IMPL_EXIT(functionname)                                         \
-    ({                                                                     \
-        fprintf(stderr, "%s returned an unknown result.\n", functionname); \
-        return 1;                                                          \
-    })
+extern char* g_errstr_custom;
+extern char* g_errstr_errno;
 
-extern char* g_errorstr[0x100];
+#define WAS_ERRNO_USED (*g_errstr_errno != 0)
 
 #endif  // ERROR_H

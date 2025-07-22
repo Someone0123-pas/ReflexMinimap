@@ -36,7 +36,6 @@ target_link_libraries(katam-minimap PRIVATE raylib)
 
 target_compile_definitions(katam-minimap PRIVATE
     $<$<CONFIG:Debug>:DEBUG>
-    $<$<CONFIG:Debug>:LOGGING>
     $<$<CONFIG:Release>:NDEBUG>
 )
 
