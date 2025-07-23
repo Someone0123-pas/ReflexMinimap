@@ -40,5 +40,9 @@ target_compile_definitions(katam-minimap PRIVATE
 )
 
 target_compile_options(katam-minimap PRIVATE
-    $<$<CONFIG:debug>:-O1>
+    $<$<CONFIG:debug>:-O1 -fsanitize=undefined -fno-sanitize-recover=all>
+)
+
+target_link_options(katam-minimap PRIVATE
+    $<$<CONFIG:debug>:-fsanitize=undefined -fno-sanitize-recover=all>
 )
