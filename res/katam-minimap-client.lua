@@ -1,3 +1,21 @@
+--[[
+From messageformat.h:
+/*
+ * Messages exchanged with the Lua script will always be only be u8 arrays.
+ * == HEADER ==
+ * msg[0]: The message type (according to enum Msg)
+ * msg[1]: The size of the following data in bytes (0x00-0xff)
+ * == DATA ==
+ * msg[2..257]: Data that is processed according to the message type
+ */
+]]
+
+MsgSuccess = 0
+MsgIdentify = 1
+MsgIngame = 2
+MsgRoom = 3
+MsgCoordinates = 4
+
 port = 2346
 serversocket = nil
 
@@ -22,6 +40,7 @@ end
 
 function client_main()
     callbacks:add("frame", client_frameadvance)
+    serversocket:send(string.char(MsgIdentify, 4) .. "mGBA")
 end
 
 function client_init()

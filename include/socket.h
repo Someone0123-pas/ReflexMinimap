@@ -2,6 +2,7 @@
 #define SOCKET_H
 
 #include "error.h"
+#include "types.h"
 
 /*
  * Initialises socket to be listening.
@@ -20,17 +21,18 @@ result_t socket_connect();
 #define SOCKET_CONNECT_ACCEPT 2
 
 /*
- * Blocks until a message is received from a client.
+ * Blocks until two messages (specified in messageformat.h) are received from a client.
+ * If an orderly shutdown was detected, an empty header (0x00, 0x00) is returned.
  * The message is allocated on the heap and must be freed after use!
- * Except when this function wasn't successful, where a nullpointer is returned.
+ * Except when an error occured or the received bytes don't match, where NULL is returned.
  */
-void* socket_receive();
+u8* socket_receive();
 
 /*
  * Attempts to close all sockets, regardless of errors.
  * The errorcode indicates the last socket where errors occured.
  */
-result_t socket_close();
+result_t socket_close(bool close_only_active);
 #define SOCKET_CLOSE_ACTIVE 1
 #define SOCKET_CLOSE_LISTENING 2
 

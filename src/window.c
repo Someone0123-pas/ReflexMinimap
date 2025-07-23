@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "error.h"
+#include "messageformat.h"
 
 window_draw draw_try_connect() { DrawText("=== KATAM-Minimap by Someone0123-pas v0.0.0 ===\nListening to port 2346 ...", 20, 20, 20, BLACK); }
 
@@ -20,4 +21,8 @@ window_draw draw_error() {
         snprintf(errorstring, sizeof(errorstring), "%s", g_errstr_custom);
     }
     DrawText(errorstring, 20, 80, 20, BLACK);
+}
+
+result_t update_window(u8* message) {
+    // TODO
 }

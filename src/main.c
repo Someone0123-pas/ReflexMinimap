@@ -1,12 +1,14 @@
 #include <errno.h>
 #include <raylib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <threads.h>
 
 #include "error.h"
 #include "log.h"
 #include "socket.h"
+#include "types.h"
 #include "window.h"
 
 // ERRORS AND LOGS
@@ -52,10 +54,12 @@ struct Thread {
 
 /*
  * m_windowstate must always be written last, such that reading it first prevents race conditions.
+ * This is handled automatically by THREAD_EPILOGUE.
  */
 struct ThreadArgs {
     int m_main_res;
     enum WindowState m_windowstate;
+    u8* m_message;
 };
 
 typedef int thread_func;
@@ -114,7 +118,20 @@ thread_func client_connect(void* args_voidptr) {
 thread_func client_receive(void* args_voidptr) {
     THREAD_PREAMBLE;
 
-    // TODO
+    u8* message = socket_receive();
+    if (message == NULL) {
+        WARN("Thread client_receive(): socket_receive() did not execute successfully. Continuing without.");
+    } else if (message[0] == 0 && message[1] == 0) {
+        LOG("Thread client_receive(): Detected orderly shutdown, resetting application to WindowState_AttemptConnection.");
+        free(message);
+        socket_close(true);
+        windowstate = WindowState_AttemptConnection;
+    } else {
+        windowstate = WindowState_ReceivedMsg;
+    }
+
+    args->m_message = message;
+    main_res = 0;
 
     THREAD_EPILOGUE("client_receive()");
 }
@@ -149,13 +166,16 @@ int main(void) {
     }
 
     InitWindow(400, 400, "KATAM-Minimap");
+
     struct Thread client_connect_thread = EMPTY_THREAD;
-    struct ThreadArgs client_connect_args = {.m_windowstate = WindowState_AttemptConnection, .m_main_res = main_res};
-    /*
+    struct ThreadArgs client_connect_args = {.m_windowstate = WindowState_AttemptConnection, .m_main_res = main_res, .m_message = NULL};
     struct Thread client_receive_thread = EMPTY_THREAD;
-    struct ThreadArgs client_receive_args = {.m_windowstate = WindowState_Connected, .m_main_res = main_res};
-    */
-    double time = 0;
+    struct ThreadArgs client_receive_args = {.m_windowstate = WindowState_Connected, .m_main_res = main_res, .m_message = NULL};
+
+    struct {
+        double m_time;
+        bool m_finished;
+    } timer = {.m_time = 0, .m_finished = false};
     window_draw_func draw = DRAW_NONE;
 
     while (!WindowShouldClose()) {
@@ -173,37 +193,54 @@ int main(void) {
                     break;
                 } else {
                     client_connect_thread.m_active = true;
+                    thrd_detach(client_connect_thread.m_thread);
                     LOG("main(): Thread for accepting client successfully created.");
                 }
             } else if (client_connect_args.m_windowstate != windowstate) {
                 windowstate = client_connect_args.m_windowstate;
                 main_res = client_connect_args.m_main_res;
-                time = GetTime();
+                timer.m_time = GetTime();
                 client_connect_thread.m_active = false;
                 LOG("main(): Switching to WindowState %d after Thread client_connect() has finished.", windowstate);
             }
         } break;
 
         case WindowState_Connected: {
-            draw = draw_connected;
+            if (!timer.m_finished && GetTime() - timer.m_time < CONNECTED_WAIT_SECS) {
+                draw = draw_connected;
+            } else {
+                timer.m_finished = true;
+                draw = draw_minimap;
+            }
 
-            // TODO: Setup receive thread
+            if (!client_receive_thread.m_active) {
+                client_receive_args.m_windowstate = windowstate;
+                client_receive_args.m_main_res = main_res;
+                int thrd_create_res = thrd_create(&client_receive_thread.m_thread, client_receive, &client_receive_args);
 
-            if (GetTime() - time > CONNECTED_WAIT_SECS) {
-                LOG("main(): Switching to WindowState_Minimap %f second(s) after connection.", CONNECTED_WAIT_SECS);
-                windowstate = WindowState_Minimap;
+                if (thrd_create_res != thrd_success) {
+                    ERR_TO_WIN(1, "main(): Failed to create a thread for receiving messages from client.");
+                    break;
+                } else {
+                    client_receive_thread.m_active = true;
+                    thrd_detach(client_receive_thread.m_thread);
+                    LOG("main(): Thread for receiving message from client successfully created.");
+                }
+            } else if (client_receive_args.m_windowstate != windowstate) {
+                windowstate = client_receive_args.m_windowstate;
+                main_res = client_receive_args.m_main_res;
+                client_receive_thread.m_active = false;
+                LOG("main(): Switching to WindowState %d after Thread client_receive has finished().", windowstate);
             }
         } break;
 
-        case WindowState_Minimap: {
-            draw = draw_minimap;
+        case WindowState_ReceivedMsg: {
+            // LOG("%s", client_receive_args.m_message + 2);
 
-            // TODO: Setup receive thread
-        } break;
+            // TODO: Send received string to window.c, where it should update static variables for draw_minimap to draw accordingly
 
-        case WindowState_Received: {
-            draw = draw_minimap;
-            // TODO: Send received string to window.c, where it should update static variables accordingly for draw_minimap to work
+            free(client_receive_args.m_message);
+            windowstate = WindowState_Connected;
         } break;
 
         case WindowState_Error: {
@@ -222,6 +259,6 @@ int main(void) {
     }
 
     CloseWindow();
-    socket_close();
+    socket_close(false);
     return main_res;
 }
