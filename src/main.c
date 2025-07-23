@@ -1,7 +1,6 @@
 #include <errno.h>
 #include <raylib.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <threads.h>
 
@@ -9,6 +8,8 @@
 #include "log.h"
 #include "socket.h"
 #include "window.h"
+
+// ERRORS AND LOGS
 
 char* g_errstr_custom = "";
 char* g_errstr_errno = "";
@@ -33,55 +34,94 @@ bool g_logging_enabled = true;
         WARN("%s: %s", g_errstr_custom, g_errstr_errno); \
     })
 
-#define NO_IMPL_TO_WIN(functionname)                                   \
-    ({                                                                 \
-        g_errstr_errno = "";                                           \
-        main_res = 1;                                                  \
-        g_errstr_custom = functionname " returned an unknown result."; \
-        windowstate = WindowState_Error;                               \
-        WARN("%s returned an unknown result.", functionname);          \
+#define NO_IMPL_TO_WIN(functionname)                                    \
+    ({                                                                  \
+        g_errstr_errno = "";                                            \
+        main_res = 1;                                                   \
+        g_errstr_custom = functionname "\nreturned an unknown result."; \
+        windowstate = WindowState_Error;                                \
+        WARN("%s returned an unknown result.", functionname);           \
     })
 
-struct Args_connect_init {
+// THREADS
+
+struct Thread {
+    bool m_active;
+    thrd_t m_thread;
+};
+
+/*
+ * m_windowstate must always be written last, such that reading it first prevents race conditions.
+ */
+struct ThreadArgs {
     int m_main_res;
     enum WindowState m_windowstate;
 };
 
-int connect_init(void* args) {
-    int res = OK;
-    int main_res = 1;
+typedef int thread_func;
+#define EMPTY_THREAD {.m_active = false}
+
+#define THREAD_PREAMBLE                                         \
+    struct ThreadArgs* args = (struct ThreadArgs*)args_voidptr; \
+    enum WindowState initial_windowstate = args->m_windowstate; \
+    int main_res = 1;                                           \
     enum WindowState windowstate = WindowState_Error;
+
+#define THREAD_EPILOGUE(functionname)                                                                                                                \
+    ({                                                                                                                                               \
+        enum WindowState current_windowstate = args->m_windowstate;                                                                                  \
+        if (current_windowstate != initial_windowstate) {                                                                                            \
+            WARN("Thread %s: During execution, the windowstate has changed from %d to %d.", functionname, initial_windowstate, current_windowstate); \
+        }                                                                                                                                            \
+        if (args->m_windowstate == WindowState_Error) {                                                                                              \
+            WARN("Thread %s: The windowstate has changed to WindowState_Error externally, so further execution is aborted.", functionname);          \
+            return 0;                                                                                                                                \
+        }                                                                                                                                            \
+        args->m_main_res = main_res;                                                                                                                 \
+        args->m_windowstate = windowstate;                                                                                                           \
+        LOG("Thread %s: Written %d into main_res and %d into windowstate.", functionname, main_res, windowstate);                                    \
+        return 0;                                                                                                                                    \
+    })
+
+thread_func client_connect(void* args_voidptr) {
+    THREAD_PREAMBLE;
 
     result_t socket_connect_res = socket_connect();
     switch (socket_connect_res) {
-    case OK:
-        res = OK;
+    case OK: {
         main_res = 0;
         windowstate = WindowState_Connected;
-        LOG("connect_init(): Thread connect_init() successfully established a connection.");
-        break;
-    case SOCKET_CONNECT_LISTENING_SOCKET_NOT_SET:
-        res = 1;
+        LOG("Thread client_connect(): Thread client_connect() successfully established a connection.");
+    } break;
+    case SOCKET_CONNECT_LISTENING_SOCKET_NOT_SET: {
         g_errstr_errno = "";
         main_res = 1;
-        g_errstr_custom = "Attempted to call socket_connect() without setting listening socket! Was socket_init() already called?";
+        g_errstr_custom = "Attempted to call socket_connect()\nwithout setting listening socket!\nWas socket_init() already called?";
         windowstate = WindowState_Error;
-        WARN("Thread connect_init() called socket_init(), without s_listening_socket being set.");
-        break;
-    case SOCKET_CONNECT_ACCEPT:
-        res = 2;
+        WARN("Thread client_connect(): socket_init() called, without s_listening_socket being set.");
+    } break;
+    case SOCKET_CONNECT_ACCEPT: {
         ERRNO_TO_WIN("In socket_connect(), with accept()");
-    default:
-        res = -1;
+    } break;
+    default: {
         NO_IMPL_TO_WIN("socket_connect()");
+    } break;
     }
 
-    ((struct Args_connect_init*)args)->m_main_res = main_res;
-    ((struct Args_connect_init*)args)->m_windowstate = windowstate;
-    LOG("connect_init(): Written %d into main_res and %d into windowstate.", main_res, windowstate);
-
-    return res;
+    THREAD_EPILOGUE("client_connect()");
 }
+
+thread_func client_receive(void* args_voidptr) {
+    THREAD_PREAMBLE;
+
+    // TODO
+
+    THREAD_EPILOGUE("client_receive()");
+}
+
+// MAIN
+
+constexpr double CONNECTED_WAIT_SECS = 2;
 
 int main(void) {
     int main_res = 0;
@@ -91,51 +131,79 @@ int main(void) {
     switch (socket_init_res) {
     case OK:
         break;
-    case SOCKET_INIT_SOCKET:
+    case SOCKET_INIT_SOCKET: {
         ERRNO_TO_WIN("In socket_init(), with socket()");
-        break;
-    case SOCKET_INIT_BIND:
+    } break;
+    case SOCKET_INIT_BIND: {
         ERRNO_TO_WIN("In socket_init(), with bind()");
-        break;
-    case SOCKET_INIT_LISTEN:
+    } break;
+    case SOCKET_INIT_LISTEN: {
         ERRNO_TO_WIN("In socket_init(), with listen()");
-        break;
-    case SOCKET_INIT_SETSOCKOPT:
+    } break;
+    case SOCKET_INIT_SETSOCKOPT: {
         ERRNO_TO_WIN("In socket_init(), with setsockopt()");
-        break;
-    default:
+    } break;
+    default: {
         NO_IMPL_TO_WIN("socket_init()");
-        break;
+    } break;
     }
 
-    InitWindow(800, 400, "KATAM-Minimap");
-    thrd_t connect_init_thread = 0;
-    struct Args_connect_init connect_init_args = {.m_windowstate = WindowState_WaitForConnection, .m_main_res = main_res};
+    InitWindow(400, 400, "KATAM-Minimap");
+    struct Thread client_connect_thread = EMPTY_THREAD;
+    struct ThreadArgs client_connect_args = {.m_windowstate = WindowState_AttemptConnection, .m_main_res = main_res};
+    /*
+    struct Thread client_receive_thread = EMPTY_THREAD;
+    struct ThreadArgs client_receive_args = {.m_windowstate = WindowState_Connected, .m_main_res = main_res};
+    */
+    double time = 0;
+    window_draw_func draw = DRAW_NONE;
 
     while (!WindowShouldClose()) {
-        window_draw_func draw = DRAW_NONE;
-
         switch (windowstate) {
-
         case WindowState_AttemptConnection: {
             draw = draw_try_connect;
-            int thrd_create_res = thrd_create(&connect_init_thread, connect_init, &connect_init_args);
-            if (thrd_create_res != thrd_success) {
-                ERR_TO_WIN(1, "Failed to create a thread for accepting a client.");
-                break;
-            }
-            LOG("main(): Thread for accepting client successfully created.");
-            windowstate = WindowState_WaitForConnection;
-        } break;
 
-        case WindowState_WaitForConnection: {
-            draw = draw_try_connect;
-            windowstate = connect_init_args.m_windowstate;
-            main_res = connect_init_args.m_main_res;
+            if (!client_connect_thread.m_active) {
+                client_connect_args.m_windowstate = windowstate;
+                client_connect_args.m_main_res = main_res;
+                int thrd_create_res = thrd_create(&client_connect_thread.m_thread, client_connect, &client_connect_args);
+
+                if (thrd_create_res != thrd_success) {
+                    ERR_TO_WIN(1, "Failed to create a thread for accepting a client.");
+                    break;
+                } else {
+                    client_connect_thread.m_active = true;
+                    LOG("main(): Thread for accepting client successfully created.");
+                }
+            } else if (client_connect_args.m_windowstate != windowstate) {
+                windowstate = client_connect_args.m_windowstate;
+                main_res = client_connect_args.m_main_res;
+                time = GetTime();
+                client_connect_thread.m_active = false;
+                LOG("main(): Switching to WindowState %d after Thread client_connect() has finished.", windowstate);
+            }
         } break;
 
         case WindowState_Connected: {
             draw = draw_connected;
+
+            // TODO: Setup receive thread
+
+            if (GetTime() - time > CONNECTED_WAIT_SECS) {
+                LOG("main(): Switching to WindowState_Minimap %f second(s) after connection.", CONNECTED_WAIT_SECS);
+                windowstate = WindowState_Minimap;
+            }
+        } break;
+
+        case WindowState_Minimap: {
+            draw = draw_minimap;
+
+            // TODO: Setup receive thread
+        } break;
+
+        case WindowState_Received: {
+            draw = draw_minimap;
+            // TODO: Send received string to window.c, where it should update static variables accordingly for draw_minimap to work
         } break;
 
         case WindowState_Error: {
