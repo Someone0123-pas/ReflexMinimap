@@ -15,8 +15,19 @@ MsgIngame = 1
 MsgRoom = 2
 MsgCoordinates = 3
 
+AdrRoomidKirby0 = 0x02020f40
+AdrXKirby0 = 0x02020f20
+AdrYKirby0 = 0x02020f24
+
 port = 2346
 serversocket = nil
+timer = 0
+
+ingame = false
+roomid = nil
+x = nil
+y = nil
+NONUM = 0
 
 function serversocket_err(error)
     console:error("Closing connection because of error: " .. error)
@@ -24,6 +35,7 @@ function serversocket_err(error)
 end
 
 function serversocket_recv()
+-- TODO
 end
 
 function serversocket_close()
@@ -31,15 +43,72 @@ function serversocket_close()
     console:log("Closing connection.")
     serversocket:close()
     serversocket = nil
+    console:log("=== Ending Script ===")
 end
 
+function serversocket_send(type, msgstring)
+    if msgstring:len() > 0xff then
+        console:error("Message \"" .. msgstring .. "\" is too long!")
+        return
+    end
+    serversocket:send(string.char(type, msgstring:len()) .. msgstring)
+end
+
+function send_identify()
+    serversocket_send(MsgIdentify, "mGBA")
+end
+
+function send_ingame(is_ingame)
+    ingame = is_ingame
+    if ingame then
+        serversocket_send(MsgIngame, string.char(1))
+    else
+        serversocket_send(MsgIngame, string.char(0))
+    end
+end
+
+-- TODO: Take index of Kirby instance,
+-- now only Kirby 0 is used
+
+function send_room()
+
+    roomid = emu:read16(AdrRoomidKirby0)
+    serversocket_send(MsgRoom, emu:readRange(AdrRoomidKirby0, 2))
+end
+
+function send_coordinates()
+    x = emu:read32(AdrXKirby0)
+    y = emu:read32(AdrYKirby0)
+    serversocket_send(MsgCoordinates, emu:readRange(AdrXKirby0, 8))
+end
 
 function client_frameadvance()
+    if timer ~= 0 then
+        timer = timer - 1
+        return
+    end
+    timer = 15
+
+    if ingame then
+        if roomid ~= emu:read16(AdrRoomidKirby0) then
+            send_room()
+        end
+        if x ~= emu:read32(AdrXKirby0) or y ~= emu:read32(AdrYKirby0) then
+            send_coordinates()
+        end
+        if roomid == NONUM then
+            send_ingame(false)
+        end
+    else
+        if emu:read16(AdrRoomidKirby0) ~= NONUM then
+            send_ingame(true)
+        end
+    end
 end
 
 function client_main()
     callbacks:add("frame", client_frameadvance)
-    serversocket:send(string.char(MsgIdentify, 4) .. "mGBA")
+    send_identify()
 end
 
 function client_init()
@@ -58,6 +127,7 @@ function client_init()
     end
 end
 
-
+callbacks:add("crashed", serversocket_close)
+callbacks:add("shutdown", serversocket_close)
+callbacks:add("stop", serversocket_close)
 client_init()
---serversocket_close()

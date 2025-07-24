@@ -7,10 +7,10 @@
 
 #include "error.h"
 #include "log.h"
+#include "pixantiqua.ttf.h"
 #include "socket.h"
 #include "types.h"
 #include "window.h"
-#include "pixantiqua.ttf.h"
 
 // ERRORS AND LOGS
 
@@ -210,6 +210,7 @@ int main(void) {
                 timer.m_finished = false;
                 timer.m_time = GetTime();
                 client_connect_thread.m_active = false;
+                kirbystate_init();
                 LOG("main(): Switching to WindowState %d after Thread client_connect() has finished.", windowstate);
             }
         } break;
@@ -248,7 +249,11 @@ int main(void) {
             if (client_receive_args.m_message == NULL) {
                 WARN("main(): The received message arrived erroneous. Not updating window.");
             } else {
-                window_update(client_receive_args.m_message);
+                result_t window_update_res = kirbystate_update(client_receive_args.m_message);
+                if (window_update_res != OK) {
+                    WARN("main(): window_update() did not execute successfully.");
+                    break;
+                }
                 free(client_receive_args.m_message);
                 client_receive_args.m_message = NULL;
                 LOG("main(): Updated window, freed message on heap.");

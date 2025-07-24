@@ -29,6 +29,7 @@ add_executable(katam-minimap
     src/main.c
     src/socket.c
     src/window.c
+    src/messageformat.c
     src/pixantiqua.ttf.c
 )
 

@@ -1,6 +1,8 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
+#include "types.h"
+
 /*
  * Messages exchanged with the Lua script will always be only be u8 arrays.
  * == HEADER ==
@@ -20,6 +22,28 @@ enum Msg {
     MsgCoordinates = 3,
 };
 
-// TODO: Functions that take the u8* message and an adequate struct* and copy information from one to the other
+// The following functions all take pointers to the message and an empty struct and initialise the latter for further use.
+
+// This struct is valid as long as the message has not yet been freed.
+struct MsgIdentify {
+    u8* m_id;
+};
+void msg_identify(struct MsgIdentify*, u8*);
+
+struct MsgIngame {
+    bool m_ingame;
+};
+void msg_ingame(struct MsgIngame*, u8*);
+
+struct MsgRoom {
+    u16 m_room;
+};
+void msg_room(struct MsgRoom*, u8*);
+
+struct MsgCoordinates {
+    s32 m_x;
+    s32 m_y;
+};
+void msg_coordinates(struct MsgCoordinates*, u8*);
 
 #endif  // MESSAGE_H
