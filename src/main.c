@@ -10,6 +10,7 @@
 #include "socket.h"
 #include "types.h"
 #include "window.h"
+#include "pixantiqua.ttf.h"
 
 // ERRORS AND LOGS
 
@@ -71,20 +72,22 @@ typedef int thread_func;
     int main_res = 1;                                           \
     enum WindowState windowstate = WindowState_Error;
 
-#define THREAD_EPILOGUE(functionname)                                                                                                                \
-    ({                                                                                                                                               \
-        enum WindowState current_windowstate = args->m_windowstate;                                                                                  \
-        if (current_windowstate != initial_windowstate) {                                                                                            \
-            WARN("Thread %s: During execution, the windowstate has changed from %d to %d.", functionname, initial_windowstate, current_windowstate); \
-        }                                                                                                                                            \
-        if (args->m_windowstate == WindowState_Error) {                                                                                              \
-            WARN("Thread %s: The windowstate has changed to WindowState_Error externally, so further execution is aborted.", functionname);          \
-            return 0;                                                                                                                                \
-        }                                                                                                                                            \
-        args->m_main_res = main_res;                                                                                                                 \
-        args->m_windowstate = windowstate;                                                                                                           \
-        LOG("Thread %s: Written %d into main_res and %d into windowstate.", functionname, main_res, windowstate);                                    \
-        return 0;                                                                                                                                    \
+#define THREAD_EPILOGUE(functionname)                                                                                          \
+    ({                                                                                                                         \
+        enum WindowState current_windowstate = args->m_windowstate;                                                            \
+        if (current_windowstate != initial_windowstate) {                                                                      \
+            WARN("Thread %s: During execution, the windowstate has changed from %d to %d.", functionname, initial_windowstate, \
+                 current_windowstate);                                                                                         \
+        }                                                                                                                      \
+        if (args->m_windowstate == WindowState_Error) {                                                                        \
+            WARN("Thread %s: The windowstate has changed to WindowState_Error externally, so further execution is aborted.",   \
+                 functionname);                                                                                                \
+            return 0;                                                                                                          \
+        }                                                                                                                      \
+        args->m_main_res = main_res;                                                                                           \
+        args->m_windowstate = windowstate;                                                                                     \
+        LOG("Thread %s: Written %d into main_res and %d into windowstate.", functionname, main_res, windowstate);              \
+        return 0;                                                                                                              \
     })
 
 thread_func client_connect(void* args_voidptr) {
@@ -100,7 +103,8 @@ thread_func client_connect(void* args_voidptr) {
     case SOCKET_CONNECT_LISTENING_SOCKET_NOT_SET: {
         g_errstr_errno = "";
         main_res = 1;
-        g_errstr_custom = "Attempted to call socket_connect()\nwithout setting listening socket!\nWas socket_init() already called?";
+        g_errstr_custom =
+            "Attempted to call socket_connect()\nwithout setting listening socket!\nWas socket_init() already called?";
         windowstate = WindowState_Error;
         WARN("Thread client_connect(): socket_init() called, without s_listening_socket being set.");
     } break;
@@ -121,9 +125,11 @@ thread_func client_receive(void* args_voidptr) {
     u8* message = socket_receive();
     if (message == NULL) {
         WARN("Thread client_receive(): socket_receive() did not execute successfully. Continuing without.");
+        windowstate = WindowState_ReceivedMsg;
     } else if (message[0] == 0 && message[1] == 0) {
         LOG("Thread client_receive(): Detected orderly shutdown, resetting application to WindowState_AttemptConnection.");
         free(message);
+        message = NULL;
         socket_close(true);
         windowstate = WindowState_AttemptConnection;
     } else {
@@ -166,9 +172,11 @@ int main(void) {
     }
 
     InitWindow(400, 400, "KATAM-Minimap");
+    Font windowfont = LoadFontFromMemory(".ttf", g_pixantiqua_ttf, g_pixantiqua_ttf_len, 200, NULL, 0);
 
     struct Thread client_connect_thread = EMPTY_THREAD;
-    struct ThreadArgs client_connect_args = {.m_windowstate = WindowState_AttemptConnection, .m_main_res = main_res, .m_message = NULL};
+    struct ThreadArgs client_connect_args = {
+        .m_windowstate = WindowState_AttemptConnection, .m_main_res = main_res, .m_message = NULL};
     struct Thread client_receive_thread = EMPTY_THREAD;
     struct ThreadArgs client_receive_args = {.m_windowstate = WindowState_Connected, .m_main_res = main_res, .m_message = NULL};
 
@@ -199,6 +207,7 @@ int main(void) {
             } else if (client_connect_args.m_windowstate != windowstate) {
                 windowstate = client_connect_args.m_windowstate;
                 main_res = client_connect_args.m_main_res;
+                timer.m_finished = false;
                 timer.m_time = GetTime();
                 client_connect_thread.m_active = false;
                 LOG("main(): Switching to WindowState %d after Thread client_connect() has finished.", windowstate);
@@ -216,6 +225,7 @@ int main(void) {
             if (!client_receive_thread.m_active) {
                 client_receive_args.m_windowstate = windowstate;
                 client_receive_args.m_main_res = main_res;
+                client_receive_args.m_message = NULL;
                 int thrd_create_res = thrd_create(&client_receive_thread.m_thread, client_receive, &client_receive_args);
 
                 if (thrd_create_res != thrd_success) {
@@ -235,16 +245,20 @@ int main(void) {
         } break;
 
         case WindowState_ReceivedMsg: {
-            // LOG("%s", client_receive_args.m_message + 2);
-
-            // TODO: Send received string to window.c, where it should update static variables for draw_minimap to draw accordingly
-
-            free(client_receive_args.m_message);
+            if (client_receive_args.m_message == NULL) {
+                WARN("main(): The received message arrived erroneous. Not updating window.");
+            } else {
+                window_update(client_receive_args.m_message);
+                free(client_receive_args.m_message);
+                client_receive_args.m_message = NULL;
+                LOG("main(): Updated window, freed message on heap.");
+            }
             windowstate = WindowState_Connected;
         } break;
 
         case WindowState_Error: {
             draw = draw_error;
+            socket_close(false);
         } break;
         }
 
@@ -252,13 +266,14 @@ int main(void) {
         ClearBackground(PINK);
 
         if (draw != DRAW_NONE) {
-            draw();
+            draw(&windowfont);
         }
 
         EndDrawing();
     }
 
     CloseWindow();
+    UnloadFont(windowfont);
     socket_close(false);
     return main_res;
 }

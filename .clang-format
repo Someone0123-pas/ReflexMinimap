@@ -2,4 +2,4 @@ BasedOnStyle: Google
 IndentWidth: 4
 UseTab: Never
 IndentCaseLabels: false
-ColumnLimit: 150
+ColumnLimit: 130

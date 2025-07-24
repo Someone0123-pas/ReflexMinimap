@@ -14,11 +14,10 @@
 #define MSG_ARGS_SIZE(msg) (msg[1])
 
 enum Msg {
-    MsgSuccess,
-    MsgIdentify,
-    MsgIngame,
-    MsgRoom,
-    MsgCoordinates,
+    MsgIdentify = 0,
+    MsgIngame = 1,
+    MsgRoom = 2,
+    MsgCoordinates = 3,
 };
 
 // TODO: Functions that take the u8* message and an adequate struct* and copy information from one to the other

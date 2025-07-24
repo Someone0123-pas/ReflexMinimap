@@ -82,6 +82,7 @@ static socket_t s_active_socket = NO_SOCKET;
     } break;
     default: {
         WARN("socket_receive(): Received bytes do not match specified bytes in header. Returning NULL.");
+        return NULL;
     } break;
     }
 

@@ -10,11 +10,10 @@ From messageformat.h:
  */
 ]]
 
-MsgSuccess = 0
-MsgIdentify = 1
-MsgIngame = 2
-MsgRoom = 3
-MsgCoordinates = 4
+MsgIdentify = 0
+MsgIngame = 1
+MsgRoom = 2
+MsgCoordinates = 3
 
 port = 2346
 serversocket = nil
@@ -61,4 +60,4 @@ end
 
 
 client_init()
-serversocket_close()
+--serversocket_close()
