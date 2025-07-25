@@ -15,4 +15,5 @@ Diagnostics:
       clang-analyzer-*,
     ]
     Remove: [
+      bugprone-easily-swappable-parameters
     ]

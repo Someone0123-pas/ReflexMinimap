@@ -2,8 +2,13 @@
 
 -- Send update messages to the server all X messages.
 -- Recommendation: Increase, if the emulator performance degrades when starting this script.
--- Default Value: 6
-WAITING_FRAMES_PER_CYCLE = 6
+-- Default Value: 5
+WAITING_FRAMES_PER_CYCLE = 2
+
+-- How often the solidity map is refreshed (unlockable doors, broken rocks, etc.) in respect to the WAITING_FRAMES_PER_CYCLE
+-- Recommendation: It makes sense for this not to be the same as above (i.e. 1)
+-- Default Value: 4
+WAITING_TIMES_SOLIDITY = 4
 
 -- CONFIGURATION END --
 
@@ -24,22 +29,30 @@ MsgIngame = 1
 MsgChangeRoom = 2
 MsgCoordinates = 3
 MsgRoomDimensions = 4
+MsgSolidity = 5
 
 AdrRoomidKirby0 = 0x02020f40
 AdrXKirby0 = 0x02020f20
 AdrYKirby0 = 0x02020f24
 AdrRoomProps = 0x089331ac
 AdrForegroundTilemaps = 0x08d64520
+AdrSolidityMaps = 0x08d63330
+AdrSolidityMapDecompressed = 0x02024ed0
+AdrNumSolidityMap = 0x02023b8e
+
+-- It makes sense not to send the solidity map as often as coordinates
+
+NONUM = 0
 
 port = 2346
 serversocket = nil
-timer = 0
+frame_timer = 0
 
 ingame = false
-roomid = nil
-x = nil
-y = nil
-NONUM = 0
+roomid = NONUM
+x = NONUM
+y = NONUM
+solidity_timer = 0
 
 function serversocket_err(error)
     console:error("Closing connection because of error: " .. error)
@@ -90,7 +103,7 @@ function send_change_room()
     roomid = emu:read16(AdrRoomidKirby0)
     serversocket_send(MsgChangeRoom, emu:readRange(AdrRoomidKirby0, 2))
     send_roomdim()
-    -- TODO: Send Solidity Map
+    send_solidity()
 end
 
 function send_coordinates()
@@ -106,12 +119,26 @@ function send_roomdim()
     serversocket_send(MsgRoomDimensions, emu:readRange(adr_foreground_tilemap, 4))
 end
 
+function send_solidity()
+    roomid = emu:read16(AdrRoomidKirby0)
+    local num_solidity = emu:read8(AdrNumSolidityMap)
+    local solidity_map_index = emu:read16(AdrRoomProps + 0x28 * roomid + 0x1a)
+    local adr_solidity_map = emu:read32(AdrSolidityMaps + 0x4 * solidity_map_index)
+    local size_solidity = bit32.extract(emu:read32(emu:read32(adr_solidity_map)), 0x8, 0x18)
+    serversocket_send(MsgSolidity, emu:readRange(AdrSolidityMapDecompressed + 0x79e * num_solidity, size_solidity))
+end
+
 function client_frameadvance()
-    if timer ~= 0 then
-        timer = timer - 1
+
+    if frame_timer ~= 0 then
+        frame_timer = frame_timer - 1
         return
     end
-    timer = WAITING_FRAMES_PER_CYCLE
+    frame_timer = WAITING_FRAMES_PER_CYCLE
+
+    if solidity_timer ~= 0 then
+        solidity_timer = solidity_timer-1
+    end
 
     if ingame then
         if roomid ~= emu:read16(AdrRoomidKirby0) then
@@ -119,8 +146,12 @@ function client_frameadvance()
         end
         if x ~= emu:read32(AdrXKirby0) or y ~= emu:read32(AdrYKirby0) then
             send_coordinates()
+            if solidity_timer == 0 then
+                solidity_timer = WAITING_TIMES_SOLIDITY
+                send_solidity()
+            end
         end
-        if roomid == NONUM then
+        if roomid == 0 then
             send_ingame(false)
         end
     else

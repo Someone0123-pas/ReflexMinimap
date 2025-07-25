@@ -35,4 +35,7 @@ window_draw draw_connected(Font*, Camera2D*);
 window_draw draw_minimap(Font*, Camera2D*);
 window_draw draw_error(Font*, Camera2D*);
 
+constexpr int COOR_SCALING = 4;
+constexpr int PIXELSIZE = 8;
+
 #endif  // WINDOW_H

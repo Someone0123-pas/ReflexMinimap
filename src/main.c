@@ -285,6 +285,7 @@ int main(void) {
         EndDrawing();
     }
 
+    // TODO: Unloading texture
     CloseWindow();
     UnloadFont(windowfont);
     socket_close(false);

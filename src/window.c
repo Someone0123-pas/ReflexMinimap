@@ -8,12 +8,9 @@
 #include "messageformat.h"
 #include "types.h"
 
-int g_fps = 120;
+int g_fps = 240;
 
-constexpr u8 ROOM_CHANGE_WAIT_FRAMES = 20;
-
-constexpr int COOR_SCALING = 4;
-constexpr int PIXELSIZE = 8;
+constexpr u8 ROOM_CHANGE_WAIT_FRAMES = 30;
 
 constexpr u8 COOR_INTERPOL_TIMES = 1;
 constexpr int COOR_INTERPOL_DENOMINATOR = 0x8;
@@ -30,7 +27,9 @@ static struct {
     s16 m_yspeed;
     u16 m_width;
     u16 m_height;
-} s_kirbystate = {false, 0, 0, NONUM, NONUM, NONUM, NONUM, NONUM, NONUM, NONUM};
+    u32 m_solidity_size;
+    Texture2D m_solidity_texture;
+} s_kirbystate = {};
 
 void kirbystate_init() {
     s_kirbystate.m_ingame = false;
@@ -43,6 +42,8 @@ void kirbystate_init() {
     s_kirbystate.m_yspeed = NONUM;
     s_kirbystate.m_width = NONUM;
     s_kirbystate.m_height = NONUM;
+    UnloadTexture(s_kirbystate.m_solidity_texture);
+    s_kirbystate.m_solidity_texture.id = 0;
 }
 
 [[nodiscard]] result_t kirbystate_update(u8* message) {
@@ -51,18 +52,18 @@ void kirbystate_init() {
         // TODO
     } break;
     case MsgIngame: {
-        struct MsgIngame windowdata;
+        struct MsgIngame windowdata = {};
         msg_ingame(&windowdata, message);
         s_kirbystate.m_ingame = windowdata.m_ingame;
     } break;
     case MsgChangeRoom: {
-        struct MsgChangeRoom windowdata;
+        struct MsgChangeRoom windowdata = {};
         msg_change_room(&windowdata, message);
         s_kirbystate.m_room = windowdata.m_room;
         s_kirbystate.m_room_change_timer = (ROOM_CHANGE_WAIT_FRAMES * g_fps) / 60;
     } break;
     case MsgCoordinates: {
-        struct MsgCoordinates windowdata;
+        struct MsgCoordinates windowdata = {};
         msg_coordinates(&windowdata, message);
         s_kirbystate.m_x = windowdata.m_x;
         s_kirbystate.m_y = windowdata.m_y;
@@ -71,10 +72,22 @@ void kirbystate_init() {
         s_kirbystate.m_coor_do_interpol = (COOR_INTERPOL_TIMES * g_fps) / 60;
     } break;
     case MsgRoomDimensions: {
-        struct MsgRoomDimensions windowdata;
+        struct MsgRoomDimensions windowdata = {};
         msg_room_dimensions(&windowdata, message);
         s_kirbystate.m_width = windowdata.m_width;
         s_kirbystate.m_height = windowdata.m_height;
+    } break;
+    case MsgSolidity: {
+        if (s_kirbystate.m_width == 0 || s_kirbystate.m_height == 0) {
+            WARN("kirbystate_update(): Solidity received without prior room dimensions. Skipping solidity.");
+            break;
+        }
+        UnloadTexture(s_kirbystate.m_solidity_texture);
+        s_kirbystate.m_solidity_texture.id = 0;
+
+        struct MsgSolidity windowdata = {.m_solidity_texture = &s_kirbystate.m_solidity_texture};
+        msg_solidity(&windowdata, message, s_kirbystate.m_width / 2, s_kirbystate.m_height / 2);
+        s_kirbystate.m_solidity_size = windowdata.m_solidity_size;
     } break;
     default: {
         WARN("kirbystate_update(): The received message came with unknown message type %d.", message[0]);
@@ -101,8 +114,8 @@ window_draw draw_connected(Font* font, Camera2D* camera) {
 window_draw draw_minimap(Font* font, Camera2D* camera) {
     if (s_kirbystate.m_ingame) {
         if (s_kirbystate.m_x != NONUM) {
-            camera->target = (Vector2){(float)((s_kirbystate.m_x * COOR_SCALING) >> 0xb),
-                                       (float)((s_kirbystate.m_y * COOR_SCALING) >> 0xb)};
+            camera->target =
+                (Vector2){(float)((s_kirbystate.m_x * COOR_SCALING) >> 0xb), (float)((s_kirbystate.m_y * COOR_SCALING) >> 0xb)};
         }
 
         if (s_kirbystate.m_coor_do_interpol) {
@@ -114,14 +127,18 @@ window_draw draw_minimap(Font* font, Camera2D* camera) {
 
         BeginMode2D(*camera);
 
-        if (s_kirbystate.m_width != NONUM && s_kirbystate.m_x != NONUM && !s_kirbystate.m_room_change_timer) {
-            float width_room = (float)(s_kirbystate.m_width + 2) * COOR_SCALING;
-            float height_room = (float)(s_kirbystate.m_height + 2) * COOR_SCALING;
-            Rectangle room_borders = {0, 0, width_room, height_room};
-            DrawRectangleLinesEx(room_borders, (float)PIXELSIZE, BLACK);
+        if (!s_kirbystate.m_room_change_timer && s_kirbystate.m_width != NONUM && s_kirbystate.m_x != NONUM &&
+            s_kirbystate.m_solidity_texture.id != 0) {
+            float line_thick = (float)PIXELSIZE/2.0f;
+            float width_room = (float)(s_kirbystate.m_width) * COOR_SCALING + line_thick * 2;
+            float height_room = (float)(s_kirbystate.m_height) * COOR_SCALING + line_thick * 2;
+            Rectangle room_borders = {-line_thick, -line_thick, width_room, height_room};
+            DrawRectangleLinesEx(room_borders, line_thick, BLACK);
 
-            DrawRectangle((s_kirbystate.m_x * COOR_SCALING) >> 0xb, (s_kirbystate.m_y * COOR_SCALING) >> 0xb,
-                          PIXELSIZE, PIXELSIZE, RED);
+            DrawTexture(s_kirbystate.m_solidity_texture, 0, 0, WHITE);
+
+            DrawRectangle(((s_kirbystate.m_x * COOR_SCALING) >> 0xb) - PIXELSIZE / 2,
+                          ((s_kirbystate.m_y * COOR_SCALING) >> 0xb) - PIXELSIZE / 2, PIXELSIZE, PIXELSIZE, RED);
         }
 
         EndMode2D();

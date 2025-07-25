@@ -1,6 +1,8 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
+#include <raylib.h>
+
 #include "types.h"
 
 /*
@@ -23,6 +25,7 @@ enum Msg {
     MsgChangeRoom = 2,
     MsgCoordinates = 3,
     MsgRoomDimensions = 4,
+    MsgSolidity = 5,
 };
 
 // The following functions all take pointers to the message and an empty struct and initialise the latter for further use.
@@ -38,7 +41,7 @@ struct MsgIngame {
 };
 void msg_ingame(struct MsgIngame*, u8*);
 
-struct MsgChangeRoom{
+struct MsgChangeRoom {
     u16 m_room;
 };
 void msg_change_room(struct MsgChangeRoom*, u8*);
@@ -56,5 +59,11 @@ struct MsgRoomDimensions {
     u16 m_height;
 };
 void msg_room_dimensions(struct MsgRoomDimensions*, u8*);
+
+struct MsgSolidity {
+    u32 m_solidity_size;
+    Texture2D* m_solidity_texture;
+};
+void msg_solidity(struct MsgSolidity*, u8*, u16 width, u16 height);
 
 #endif  // MESSAGE_H
