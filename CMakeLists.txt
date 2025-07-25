@@ -9,11 +9,12 @@ include(FetchContent)
 FetchContent_Declare(
     raylib
     GIT_REPOSITORY https://github.com/raysan5/raylib.git
-    GIT_TAG        9b6c09c32f7283e849918aef220ec4fa629af8d2
+    GIT_TAG        5.5
 )
 
 option(BUILD_SHARED_LIBS "Build raylib as a shared library" OFF)
-option(GLFW_BUILD_WAYLAND "Build the bundled GLFW with Wayland support" ON)
+# Unfortunately, it seems Wayland can be broken right now with Raylib v5.5
+option(GLFW_BUILD_WAYLAND "Build the bundled GLFW with Wayland support" OFF)
 option(GLFW_BUILD_X11 "Build the bundled GLFW with X11 support" ON)
 
 if(CMAKE_BUILD_TYPE STREQUAL Debug)

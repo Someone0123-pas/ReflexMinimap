@@ -2,7 +2,7 @@
 
 -- Send update messages to the server all X messages.
 -- Recommendation: Increase, if the emulator performance degrades when starting this script.
--- Default Value: 5
+-- Default Value: 2
 WAITING_FRAMES_PER_CYCLE = 2
 
 -- How often the solidity map is refreshed (unlockable doors, broken rocks, etc.) in respect to the WAITING_FRAMES_PER_CYCLE

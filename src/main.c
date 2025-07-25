@@ -177,10 +177,10 @@ int main(void) {
     } break;
     }
 
-    InitWindow(400, 400, "KATAM-Minimap");
+    InitWindow(350, 350, "KATAM-Minimap");
     SetTargetFPS(g_fps);
     Font windowfont = LoadFontFromMemory(".ttf", g_pixantiqua_ttf, g_pixantiqua_ttf_len, 200, NULL, 0);
-    Camera2D camera = {{(float)GetScreenWidth() / 2.0f, (float)GetScreenHeight() / 2.0f}, {0, 0}, 0.0f, 1.0f};
+    Camera2D camera = {{(float)GetScreenWidth() / 2.0f, (float)GetScreenHeight() / 2.0f + 10}, {0, 0}, 0.0f, 1.0f};
 
     struct Thread client_connect_thread = EMPTY_THREAD;
     struct ThreadArgs client_connect_args = {

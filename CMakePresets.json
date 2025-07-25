@@ -18,7 +18,7 @@
             "displayName": "Release",
             "description": "Release with Ninja generator",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/__release",
+            "binaryDir": "${sourceDir}/build/release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }

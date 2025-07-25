@@ -98,13 +98,13 @@ void kirbystate_init() {
 }
 
 window_draw draw_try_connect(Font* font, Camera2D* camera) {
-    DrawTextEx(*font, "KATAM-Minimap\nby Someone0123-pas\nv0.0.0", (Vector2){20, 20}, 25, 0.5f, BLACK);
-    DrawTextEx(*font, "Listening to port 2346 ...", (Vector2){20, 120}, 20, 0.0f, DARKPURPLE);
+    DrawTextEx(*font, "KATAM-Minimap\nby Someone0123-pas\nv0.0.1", (Vector2){20, 20}, 30.0f, 0.5f, BLACK);
+    DrawTextEx(*font, "Listening to port 2346 ...", (Vector2){20, (float)GetScreenHeight() - 45}, 25.0f, 0.0f, DARKPURPLE);
 }
 
 window_draw draw_connected(Font* font, Camera2D* camera) {
     const char text[] = "Connected!";
-    float fontsize = 30.0f;
+    float fontsize = 40.0f;
     float fontspacing = 2.0f;
     Vector2 textsize = MeasureTextEx(*font, text, fontsize, fontspacing);
     Vector2 textpos = {((float)GetScreenWidth() - textsize.x) / 2.0f, ((float)GetScreenHeight() - textsize.y) / 2.0f};
@@ -138,7 +138,7 @@ window_draw draw_minimap(Font* font, Camera2D* camera) {
             DrawTexture(s_kirbystate.m_solidity_texture, 0, 0, WHITE);
 
             DrawRectangle(((s_kirbystate.m_x * COOR_SCALING) >> 0xb) - PIXELSIZE / 2,
-                          ((s_kirbystate.m_y * COOR_SCALING) >> 0xb) - PIXELSIZE / 2, PIXELSIZE, PIXELSIZE, RED);
+                          ((s_kirbystate.m_y * COOR_SCALING) >> 0xb) - PIXELSIZE / 2, PIXELSIZE, PIXELSIZE, MAGENTA);
         }
 
         EndMode2D();
@@ -167,7 +167,7 @@ window_draw draw_minimap(Font* font, Camera2D* camera) {
 
     } else {
         const char text[] = "MENU";
-        float fontsize = 30.0f;
+        float fontsize = 50.0f;
         float fontspacing = 2.0f;
         Vector2 textsize = MeasureTextEx(*font, text, fontsize, fontspacing);
         Vector2 textpos = {((float)GetScreenWidth() - textsize.x) / 2, ((float)GetScreenHeight() - textsize.y) / 2};
