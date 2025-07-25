@@ -2,6 +2,7 @@ CompileFlags:
   Add: [
     -Wall,
     -Wextra,
+    -Wno-unused-parameter,
     -std=c23
   ]
 

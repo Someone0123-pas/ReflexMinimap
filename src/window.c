@@ -6,33 +6,46 @@
 #include "error.h"
 #include "log.h"
 #include "messageformat.h"
+#include "types.h"
 
 int g_fps = 120;
+
+constexpr u8 ROOM_CHANGE_WAIT_FRAMES = 20;
+
+constexpr int COOR_SCALING = 4;
+constexpr int PIXELSIZE = 8;
+
+constexpr u8 COOR_INTERPOL_TIMES = 1;
+constexpr int COOR_INTERPOL_DENOMINATOR = 0x8;
 
 #define NONUM 0
 static struct {
     bool m_ingame;
-    unsigned char m_room_change_timer;
-    int m_room;
-    int m_x;
-    int m_y;
-    int m_width;
-    int m_height;
-} s_kirbystate = {false, 0, NONUM, NONUM, NONUM, NONUM, NONUM};
+    u8 m_room_change_timer;
+    u8 m_coor_do_interpol;
+    u16 m_room;
+    s32 m_x;
+    s32 m_y;
+    s16 m_xspeed;
+    s16 m_yspeed;
+    u16 m_width;
+    u16 m_height;
+} s_kirbystate = {false, 0, 0, NONUM, NONUM, NONUM, NONUM, NONUM, NONUM, NONUM};
 
 void kirbystate_init() {
     s_kirbystate.m_ingame = false;
     s_kirbystate.m_room_change_timer = 0;
+    s_kirbystate.m_coor_do_interpol = 0;
     s_kirbystate.m_room = NONUM;
     s_kirbystate.m_x = NONUM;
     s_kirbystate.m_y = NONUM;
+    s_kirbystate.m_xspeed = NONUM;
+    s_kirbystate.m_yspeed = NONUM;
     s_kirbystate.m_width = NONUM;
     s_kirbystate.m_height = NONUM;
 }
 
 [[nodiscard]] result_t kirbystate_update(u8* message) {
-    constexpr unsigned char ROOM_CHANGE_WAIT_FRAMES = 20;
-
     switch (message[0]) {
     case MsgIdentify: {
         // TODO
@@ -46,13 +59,16 @@ void kirbystate_init() {
         struct MsgChangeRoom windowdata;
         msg_change_room(&windowdata, message);
         s_kirbystate.m_room = windowdata.m_room;
-        s_kirbystate.m_room_change_timer = ROOM_CHANGE_WAIT_FRAMES * g_fps / 60;
+        s_kirbystate.m_room_change_timer = (ROOM_CHANGE_WAIT_FRAMES * g_fps) / 60;
     } break;
     case MsgCoordinates: {
         struct MsgCoordinates windowdata;
         msg_coordinates(&windowdata, message);
         s_kirbystate.m_x = windowdata.m_x;
         s_kirbystate.m_y = windowdata.m_y;
+        s_kirbystate.m_xspeed = windowdata.m_xspeed;
+        s_kirbystate.m_yspeed = windowdata.m_yspeed;
+        s_kirbystate.m_coor_do_interpol = (COOR_INTERPOL_TIMES * g_fps) / 60;
     } break;
     case MsgRoomDimensions: {
         struct MsgRoomDimensions windowdata;
@@ -83,11 +99,32 @@ window_draw draw_connected(Font* font, Camera2D* camera) {
 }
 
 window_draw draw_minimap(Font* font, Camera2D* camera) {
-    constexpr int COORDINATE_SCALING = 4;
-    constexpr int PIXELSIZE = 8;
-
     if (s_kirbystate.m_ingame) {
-        // TODO: Header with background, drawn above camera
+        if (s_kirbystate.m_x != NONUM) {
+            camera->target = (Vector2){(float)((s_kirbystate.m_x * COOR_SCALING) >> 0xb),
+                                       (float)((s_kirbystate.m_y * COOR_SCALING) >> 0xb)};
+        }
+
+        if (s_kirbystate.m_coor_do_interpol) {
+            s_kirbystate.m_x += s_kirbystate.m_xspeed / COOR_INTERPOL_DENOMINATOR;
+            s_kirbystate.m_y += s_kirbystate.m_yspeed / COOR_INTERPOL_DENOMINATOR;
+        }
+
+        // DYNAMIC CAMERA
+
+        BeginMode2D(*camera);
+
+        if (s_kirbystate.m_width != NONUM && s_kirbystate.m_x != NONUM && !s_kirbystate.m_room_change_timer) {
+            float width_room = (float)(s_kirbystate.m_width + 2) * COOR_SCALING;
+            float height_room = (float)(s_kirbystate.m_height + 2) * COOR_SCALING;
+            Rectangle room_borders = {0, 0, width_room, height_room};
+            DrawRectangleLinesEx(room_borders, (float)PIXELSIZE, BLACK);
+
+            DrawRectangle((s_kirbystate.m_x * COOR_SCALING) >> 0xb, (s_kirbystate.m_y * COOR_SCALING) >> 0xb,
+                          PIXELSIZE, PIXELSIZE, RED);
+        }
+
+        EndMode2D();
 
         // STATIC HEADER
 
@@ -109,26 +146,7 @@ window_draw draw_minimap(Font* font, Camera2D* camera) {
             Vector2 textsize_y = MeasureTextEx(*font, text_y, fontsize_y, fontspacing_y);
             Vector2 textpos_y = {(float)GetScreenWidth() - textsize_y.x - 20, 20};
             DrawTextEx(*font, text_y, textpos_y, fontsize_y, fontspacing_y, BLACK);
-
-            camera->target = (Vector2){(float)((s_kirbystate.m_x * COORDINATE_SCALING) >> 0xb),
-                                       (float)((s_kirbystate.m_y * COORDINATE_SCALING) >> 0xb)};
         }
-
-        // DYNAMIC CAMERA
-
-        BeginMode2D(*camera);
-
-        if (s_kirbystate.m_width != NONUM && s_kirbystate.m_x != NONUM && !s_kirbystate.m_room_change_timer) {
-            float width_room = (float)(s_kirbystate.m_width + 2) * COORDINATE_SCALING;
-            float height_room = (float)(s_kirbystate.m_height + 2) * COORDINATE_SCALING;
-            Rectangle room_borders = {0, 0, width_room, height_room};
-            DrawRectangleLinesEx(room_borders, (float)PIXELSIZE, BLACK);
-
-            DrawRectangle((s_kirbystate.m_x * COORDINATE_SCALING) >> 0xb,
-                          (s_kirbystate.m_y * COORDINATE_SCALING) >> 0xb, PIXELSIZE, PIXELSIZE, RED);
-        }
-
-        EndMode2D();
 
     } else {
         const char text[] = "MENU";
@@ -141,6 +159,9 @@ window_draw draw_minimap(Font* font, Camera2D* camera) {
 
     if (s_kirbystate.m_room_change_timer > 0) {
         s_kirbystate.m_room_change_timer--;
+    }
+    if (s_kirbystate.m_coor_do_interpol > 0) {
+        s_kirbystate.m_coor_do_interpol--;
     }
 }
 

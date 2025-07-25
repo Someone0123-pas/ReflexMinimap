@@ -46,6 +46,8 @@ void msg_change_room(struct MsgChangeRoom*, u8*);
 struct MsgCoordinates {
     s32 m_x;
     s32 m_y;
+    s16 m_xspeed;
+    s16 m_yspeed;
 };
 void msg_coordinates(struct MsgCoordinates*, u8*);
 

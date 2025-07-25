@@ -2,8 +2,8 @@
 
 -- Send update messages to the server all X messages.
 -- Recommendation: Increase, if the emulator performance degrades when starting this script.
--- Default Value: 4
-WAITING_FRAMES_PER_CYCLE = 4
+-- Default Value: 6
+WAITING_FRAMES_PER_CYCLE = 6
 
 -- CONFIGURATION END --
 
@@ -96,7 +96,7 @@ end
 function send_coordinates()
     x = emu:read32(AdrXKirby0)
     y = emu:read32(AdrYKirby0)
-    serversocket_send(MsgCoordinates, emu:readRange(AdrXKirby0, 8))
+    serversocket_send(MsgCoordinates, emu:readRange(AdrXKirby0, 8) .. emu:readRange(AdrXKirby0 + 0x10, 4))
 end
 
 function send_roomdim()
