@@ -38,7 +38,6 @@ struct MsgIngame {
 };
 void msg_ingame(struct MsgIngame*, u8*);
 
-// Receiving this message shall reset coordinates and room dimensions.
 struct MsgChangeRoom{
     u16 m_room;
 };

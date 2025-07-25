@@ -6,6 +6,8 @@
 #include "error.h"
 #include "types.h"
 
+extern int g_fps;
+
 /*
  * Empty s_kirbystate.
  */ 

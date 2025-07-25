@@ -7,18 +7,22 @@
 #include "log.h"
 #include "messageformat.h"
 
+int g_fps = 120;
+
 #define NONUM 0
 static struct {
     bool m_ingame;
+    unsigned char m_room_change_timer;
     int m_room;
     int m_x;
     int m_y;
     int m_width;
     int m_height;
-} s_kirbystate = {false, NONUM, NONUM, NONUM, NONUM, NONUM};
+} s_kirbystate = {false, 0, NONUM, NONUM, NONUM, NONUM, NONUM};
 
 void kirbystate_init() {
     s_kirbystate.m_ingame = false;
+    s_kirbystate.m_room_change_timer = 0;
     s_kirbystate.m_room = NONUM;
     s_kirbystate.m_x = NONUM;
     s_kirbystate.m_y = NONUM;
@@ -27,6 +31,8 @@ void kirbystate_init() {
 }
 
 [[nodiscard]] result_t kirbystate_update(u8* message) {
+    constexpr unsigned char ROOM_CHANGE_WAIT_FRAMES = 20;
+
     switch (message[0]) {
     case MsgIdentify: {
         // TODO
@@ -40,6 +46,7 @@ void kirbystate_init() {
         struct MsgChangeRoom windowdata;
         msg_change_room(&windowdata, message);
         s_kirbystate.m_room = windowdata.m_room;
+        s_kirbystate.m_room_change_timer = ROOM_CHANGE_WAIT_FRAMES * g_fps / 60;
     } break;
     case MsgCoordinates: {
         struct MsgCoordinates windowdata;
@@ -111,7 +118,7 @@ window_draw draw_minimap(Font* font, Camera2D* camera) {
 
         BeginMode2D(*camera);
 
-        if (s_kirbystate.m_width != NONUM && s_kirbystate.m_x != NONUM) {
+        if (s_kirbystate.m_width != NONUM && s_kirbystate.m_x != NONUM && !s_kirbystate.m_room_change_timer) {
             float width_room = (float)(s_kirbystate.m_width + 2) * COORDINATE_SCALING;
             float height_room = (float)(s_kirbystate.m_height + 2) * COORDINATE_SCALING;
             Rectangle room_borders = {0, 0, width_room, height_room};
@@ -130,6 +137,10 @@ window_draw draw_minimap(Font* font, Camera2D* camera) {
         Vector2 textsize = MeasureTextEx(*font, text, fontsize, fontspacing);
         Vector2 textpos = {((float)GetScreenWidth() - textsize.x) / 2, ((float)GetScreenHeight() - textsize.y) / 2};
         DrawTextEx(*font, text, textpos, fontsize, fontspacing, BLACK);
+    }
+
+    if (s_kirbystate.m_room_change_timer > 0) {
+        s_kirbystate.m_room_change_timer--;
     }
 }
 

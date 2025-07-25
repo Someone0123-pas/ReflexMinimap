@@ -3,7 +3,7 @@
 -- Send update messages to the server all X messages.
 -- Recommendation: Increase, if the emulator performance degrades when starting this script.
 -- Default Value: 4
-WAITING_FRAMES_PER_CYCLE = 3
+WAITING_FRAMES_PER_CYCLE = 4
 
 -- CONFIGURATION END --
 
