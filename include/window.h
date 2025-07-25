@@ -23,14 +23,14 @@ result_t kirbystate_update(u8* message);
  * EndDrawing() control flows.
  */
 typedef void window_draw;
-typedef window_draw (*window_draw_func)(Font*);
+typedef window_draw (*window_draw_func)(Font*, Camera2D*);
 #define DRAW_NONE NULL
 
 enum WindowState { WindowState_AttemptConnection, WindowState_Connected, WindowState_ReceivedMsg, WindowState_Error };
 
-window_draw draw_try_connect(Font*);
-window_draw draw_connected(Font*);
-window_draw draw_minimap(Font*);
-window_draw draw_error(Font*);
+window_draw draw_try_connect(Font*, Camera2D*);
+window_draw draw_connected(Font*, Camera2D*);
+window_draw draw_minimap(Font*, Camera2D*);
+window_draw draw_error(Font*, Camera2D*);
 
 #endif  // WINDOW_H

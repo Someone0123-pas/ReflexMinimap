@@ -148,6 +148,11 @@ thread_func client_receive(void* args_voidptr) {
 constexpr double CONNECTED_WAIT_SECS = 2;
 
 int main(void) {
+
+    // TODO: Into log.c::log_init()
+    g_logging_enabled = false;
+    SetTraceLogLevel(LOG_NONE);
+
     int main_res = 0;
     enum WindowState windowstate = WindowState_AttemptConnection;
 
@@ -173,7 +178,9 @@ int main(void) {
     }
 
     InitWindow(400, 400, "KATAM-Minimap");
+    SetTargetFPS(120);
     Font windowfont = LoadFontFromMemory(".ttf", g_pixantiqua_ttf, g_pixantiqua_ttf_len, 200, NULL, 0);
+    Camera2D camera = {{(float)GetScreenWidth() / 2.0f, (float)GetScreenHeight() / 2.0f}, {0, 0}, 0.0f, 1.0f};
 
     struct Thread client_connect_thread = EMPTY_THREAD;
     struct ThreadArgs client_connect_args = {
@@ -250,14 +257,14 @@ int main(void) {
             if (client_receive_args.m_message == NULL) {
                 WARN("main(): The received message arrived erroneous. Not updating window.");
             } else {
-                result_t window_update_res = kirbystate_update(client_receive_args.m_message);
-                if (window_update_res != OK) {
-                    WARN("main(): window_update() did not execute successfully.");
-                    break;
-                }
+                result_t kirbystate_update_res = kirbystate_update(client_receive_args.m_message);
                 free(client_receive_args.m_message);
                 client_receive_args.m_message = NULL;
-                LOG("main(): Updated window, freed message on heap.");
+                if (kirbystate_update_res != OK) {
+                    WARN("main(): kirbystate_update() did not execute successfully.");
+                } else {
+                    LOG("main(): Updated window, freed message on heap.");
+                }
             }
             windowstate = WindowState_Connected;
         } break;
@@ -272,7 +279,7 @@ int main(void) {
         ClearBackground(PINK);
 
         if (draw != DRAW_NONE) {
-            draw(&windowfont);
+            draw(&windowfont, &camera);
         }
 
         EndDrawing();

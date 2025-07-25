@@ -20,8 +20,9 @@
 enum Msg {
     MsgIdentify = 0,
     MsgIngame = 1,
-    MsgRoom = 2,
+    MsgChangeRoom = 2,
     MsgCoordinates = 3,
+    MsgRoomDimensions = 4,
 };
 
 // The following functions all take pointers to the message and an empty struct and initialise the latter for further use.
@@ -37,15 +38,22 @@ struct MsgIngame {
 };
 void msg_ingame(struct MsgIngame*, u8*);
 
-struct MsgRoom {
+// Receiving this message shall reset coordinates and room dimensions.
+struct MsgChangeRoom{
     u16 m_room;
 };
-void msg_room(struct MsgRoom*, u8*);
+void msg_change_room(struct MsgChangeRoom*, u8*);
 
 struct MsgCoordinates {
     s32 m_x;
     s32 m_y;
 };
 void msg_coordinates(struct MsgCoordinates*, u8*);
+
+struct MsgRoomDimensions {
+    u16 m_width;
+    u16 m_height;
+};
+void msg_room_dimensions(struct MsgRoomDimensions*, u8*);
 
 #endif  // MESSAGE_H

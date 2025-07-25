@@ -13,15 +13,18 @@ static struct {
     int m_room;
     int m_x;
     int m_y;
-} s_kirbystate = {false, NONUM, NONUM, NONUM};
+    int m_width;
+    int m_height;
+} s_kirbystate = {false, NONUM, NONUM, NONUM, NONUM, NONUM};
 
 void kirbystate_init() {
     s_kirbystate.m_ingame = false;
     s_kirbystate.m_room = NONUM;
     s_kirbystate.m_x = NONUM;
     s_kirbystate.m_y = NONUM;
+    s_kirbystate.m_width = NONUM;
+    s_kirbystate.m_height = NONUM;
 }
-
 
 [[nodiscard]] result_t kirbystate_update(u8* message) {
     switch (message[0]) {
@@ -33,9 +36,9 @@ void kirbystate_init() {
         msg_ingame(&windowdata, message);
         s_kirbystate.m_ingame = windowdata.m_ingame;
     } break;
-    case MsgRoom: {
-        struct MsgRoom windowdata;
-        msg_room(&windowdata, message);
+    case MsgChangeRoom: {
+        struct MsgChangeRoom windowdata;
+        msg_change_room(&windowdata, message);
         s_kirbystate.m_room = windowdata.m_room;
     } break;
     case MsgCoordinates: {
@@ -44,53 +47,82 @@ void kirbystate_init() {
         s_kirbystate.m_x = windowdata.m_x;
         s_kirbystate.m_y = windowdata.m_y;
     } break;
+    case MsgRoomDimensions: {
+        struct MsgRoomDimensions windowdata;
+        msg_room_dimensions(&windowdata, message);
+        s_kirbystate.m_width = windowdata.m_width;
+        s_kirbystate.m_height = windowdata.m_height;
+    } break;
     default: {
-        WARN("window_update(): The received message came with unknown message type %d.", message[0]);
+        WARN("kirbystate_update(): The received message came with unknown message type %d.", message[0]);
         return KIRBYSTATE_UPDATE_UNKNOWN_MSGTYPE;
     }
     }
     return OK;
 }
 
-window_draw draw_try_connect(Font* font) {
+window_draw draw_try_connect(Font* font, Camera2D* camera) {
     DrawTextEx(*font, "KATAM-Minimap\nby Someone0123-pas\nv0.0.0", (Vector2){20, 20}, 25, 0.5f, BLACK);
     DrawTextEx(*font, "Listening to port 2346 ...", (Vector2){20, 120}, 20, 0.0f, DARKPURPLE);
 }
 
-window_draw draw_connected(Font* font) {
+window_draw draw_connected(Font* font, Camera2D* camera) {
     const char text[] = "Connected!";
     float fontsize = 30.0f;
     float fontspacing = 2.0f;
     Vector2 textsize = MeasureTextEx(*font, text, fontsize, fontspacing);
-    Vector2 textpos = {((float)GetScreenWidth() - textsize.x) / 2, ((float)GetScreenHeight() - textsize.y) / 2};
+    Vector2 textpos = {((float)GetScreenWidth() - textsize.x) / 2.0f, ((float)GetScreenHeight() - textsize.y) / 2.0f};
     DrawTextEx(*font, text, textpos, fontsize, fontspacing, GREEN);
 }
 
-window_draw draw_minimap(Font* font) {
+window_draw draw_minimap(Font* font, Camera2D* camera) {
+    constexpr int COORDINATE_SCALING = 4;
+    constexpr int PIXELSIZE = 8;
+
     if (s_kirbystate.m_ingame) {
+        // TODO: Header with background, drawn above camera
+
+        // STATIC HEADER
+
         if (s_kirbystate.m_room != NONUM) {
-            char text[0x20] = {};
-            snprintf(text, sizeof(text), "Room ID: %d", s_kirbystate.m_room);
-            DrawTextEx(*font, text, (Vector2){20, 20}, 18.0f, 0.0f, BLACK);
+            DrawTextEx(*font, TextFormat("Room ID: %d", s_kirbystate.m_room), (Vector2){20, 20}, 18.0f, 0.0f, BLACK);
         }
 
         if (s_kirbystate.m_x != NONUM) {
-            char text_x[0x20] = {};
-            snprintf(text_x, sizeof(text_x), "X: %d", s_kirbystate.m_x >> 0xc);
+            const char* text_x = TextFormat("X: %d", s_kirbystate.m_x >> 0xc);
             float fontsize_x = 18.0f;
             float fontspacing_x = 0.0f;
             Vector2 textsize_x = MeasureTextEx(*font, text_x, fontsize_x, fontspacing_x);
-            Vector2 textpos_x = {((float)GetScreenWidth() - textsize_x.x) / 2, 20};
+            Vector2 textpos_x = {((float)GetScreenWidth() - textsize_x.x) / 2.0f, 20};
             DrawTextEx(*font, text_x, textpos_x, fontsize_x, fontspacing_x, BLACK);
 
-            char text_y[0x20] = {};
-            snprintf(text_y, sizeof(text_y), "Y: %d", s_kirbystate.m_y >> 0xc);
+            const char* text_y = TextFormat("Y: %d", s_kirbystate.m_y >> 0xc);
             float fontsize_y = 18.0f;
             float fontspacing_y = 0.0f;
             Vector2 textsize_y = MeasureTextEx(*font, text_y, fontsize_y, fontspacing_y);
             Vector2 textpos_y = {(float)GetScreenWidth() - textsize_y.x - 20, 20};
             DrawTextEx(*font, text_y, textpos_y, fontsize_y, fontspacing_y, BLACK);
+
+            camera->target = (Vector2){(float)((s_kirbystate.m_x * COORDINATE_SCALING) >> 0xb),
+                                       (float)((s_kirbystate.m_y * COORDINATE_SCALING) >> 0xb)};
         }
+
+        // DYNAMIC CAMERA
+
+        BeginMode2D(*camera);
+
+        if (s_kirbystate.m_width != NONUM && s_kirbystate.m_x != NONUM) {
+            float width_room = (float)(s_kirbystate.m_width + 2) * COORDINATE_SCALING;
+            float height_room = (float)(s_kirbystate.m_height + 2) * COORDINATE_SCALING;
+            Rectangle room_borders = {0, 0, width_room, height_room};
+            DrawRectangleLinesEx(room_borders, (float)PIXELSIZE, BLACK);
+
+            DrawRectangle((s_kirbystate.m_x * COORDINATE_SCALING) >> 0xb,
+                          (s_kirbystate.m_y * COORDINATE_SCALING) >> 0xb, PIXELSIZE, PIXELSIZE, RED);
+        }
+
+        EndMode2D();
+
     } else {
         const char text[] = "MENU";
         float fontsize = 30.0f;
@@ -101,8 +133,9 @@ window_draw draw_minimap(Font* font) {
     }
 }
 
-window_draw draw_error(Font* font) {
+window_draw draw_error(Font* font, Camera2D* camera) {
     DrawText("ERROR!", 20, 20, 30, RED);
+    // TODO: Use TextFormat()
     char errorstring[0x200] = {0};
     if (WAS_ERRNO_USED) {
         snprintf(errorstring, sizeof(errorstring), "%s:\n%s", g_errstr_custom, g_errstr_errno);

@@ -1,11 +1,16 @@
 -- CONFIGURATION --
-WAITING_FRAMES_PER_CYCLE = 6
+
+-- Send update messages to the server all X messages.
+-- Recommendation: Increase, if the emulator performance degrades when starting this script.
+-- Default Value: 4
+WAITING_FRAMES_PER_CYCLE = 3
+
 -- CONFIGURATION END --
 
 --[[
 From messageformat.h:
 /*
- * Messages exchanged with the Lua script will always be only be u8 arrays.
+ * Messages exchanged with the Lua script will always only be u8 arrays.
  * == HEADER ==
  * msg[0]: The message type (according to enum Msg)
  * msg[1..3]: The size of the following data in bytes (little endian)
@@ -16,12 +21,15 @@ From messageformat.h:
 
 MsgIdentify = 0
 MsgIngame = 1
-MsgRoom = 2
+MsgChangeRoom = 2
 MsgCoordinates = 3
+MsgRoomDimensions = 4
 
 AdrRoomidKirby0 = 0x02020f40
 AdrXKirby0 = 0x02020f20
 AdrYKirby0 = 0x02020f24
+AdrRoomProps = 0x089331ac
+AdrForegroundTilemaps = 0x08d64520
 
 port = 2346
 serversocket = nil
@@ -78,10 +86,10 @@ end
 -- TODO: Take index of Kirby instance,
 -- now only Kirby 0 is used
 
-function send_room()
+function send_change_room()
     roomid = emu:read16(AdrRoomidKirby0)
-    serversocket_send(MsgRoom, emu:readRange(AdrRoomidKirby0, 2))
-    -- TODO: Send Room Dimensions
+    serversocket_send(MsgChangeRoom, emu:readRange(AdrRoomidKirby0, 2))
+    send_roomdim()
     -- TODO: Send Solidity Map
 end
 
@@ -89,6 +97,13 @@ function send_coordinates()
     x = emu:read32(AdrXKirby0)
     y = emu:read32(AdrYKirby0)
     serversocket_send(MsgCoordinates, emu:readRange(AdrXKirby0, 8))
+end
+
+function send_roomdim()
+    roomid = emu:read16(AdrRoomidKirby0)
+    local map_data_index = emu:read16(AdrRoomProps + 0x28 * roomid + 0x18)
+    local adr_foreground_tilemap = emu:read32(AdrForegroundTilemaps + 0x4 * map_data_index)
+    serversocket_send(MsgRoomDimensions, emu:readRange(adr_foreground_tilemap, 4))
 end
 
 function client_frameadvance()
@@ -100,7 +115,7 @@ function client_frameadvance()
 
     if ingame then
         if roomid ~= emu:read16(AdrRoomidKirby0) then
-            send_room()
+            send_change_room()
         end
         if x ~= emu:read32(AdrXKirby0) or y ~= emu:read32(AdrYKirby0) then
             send_coordinates()
