@@ -7,6 +7,7 @@
 
 #include "error.h"
 #include "log.h"
+#include "messageformat.h"
 #include "pixantiqua.ttf.h"
 #include "socket.h"
 #include "types.h"
@@ -126,7 +127,7 @@ thread_func client_receive(void* args_voidptr) {
     if (message == NULL) {
         WARN("Thread client_receive(): socket_receive() did not execute successfully. Continuing without.");
         windowstate = WindowState_ReceivedMsg;
-    } else if (message[0] == 0 && message[1] == 0) {
+    } else if (IS_HEADER_EMPTY(message)) {
         LOG("Thread client_receive(): Detected orderly shutdown, resetting application to WindowState_AttemptConnection.");
         free(message);
         message = NULL;

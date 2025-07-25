@@ -64,7 +64,7 @@ static socket_t s_active_socket = NO_SOCKET;
         WARN("socket_receive(): s_active_socket has not been set. Returning with NULL.");
         return NULL;
     }
-    u8 header[2] = {};
+    u8 header[4] = {};
 
     ssize_t recv_res = 0;
     recv_res = recv(s_active_socket, &header, sizeof(header), 0);
@@ -73,7 +73,7 @@ static socket_t s_active_socket = NO_SOCKET;
         break;
     case 0: {
         LOG("socket_receive(): An orderly shutdown was detected. Returning with empty header.");
-        u8* empty_header = calloc(2, sizeof(u8));
+        u8* empty_header = calloc(sizeof(header), sizeof(u8));
         return empty_header;
     } break;
     case -1: {
@@ -87,14 +87,14 @@ static socket_t s_active_socket = NO_SOCKET;
     }
 
     // nmemb is chosen so that it is ensured that the header in front has place AND the string afterwards is zero-terminated
-    u8* message = calloc(MSG_ARGS_SIZE(header) + 3, sizeof(u8));
+    u8* message = calloc(MSG_ARGS_SIZE(header) + sizeof(header) + 1, sizeof(u8));
 
-    recv_res = recv(s_active_socket, message + 2, MSG_ARGS_SIZE(header), 0);
+    recv_res = recv(s_active_socket, message + sizeof(header), MSG_ARGS_SIZE(header), 0);
     switch (recv_res) {
     case 0: {
         LOG("socket_receive(): An orderly shutdown was detected. Returning with empty header.");
         free(message);
-        u8* empty_header = calloc(2, sizeof(u8));
+        u8* empty_header = calloc(sizeof(header), sizeof(u8));
         return empty_header;
     } break;
     case -1: {
@@ -113,6 +113,8 @@ static socket_t s_active_socket = NO_SOCKET;
 
     message[0] = header[0];
     message[1] = header[1];
+    message[2] = header[2];
+    message[3] = header[3];
     LOG("socket_receive(): Successfully received message.");
     return message;
 }

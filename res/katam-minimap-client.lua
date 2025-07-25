@@ -1,12 +1,16 @@
+-- CONFIGURATION --
+WAITING_FRAMES_PER_CYCLE = 6
+-- CONFIGURATION END --
+
 --[[
 From messageformat.h:
 /*
  * Messages exchanged with the Lua script will always be only be u8 arrays.
  * == HEADER ==
  * msg[0]: The message type (according to enum Msg)
- * msg[1]: The size of the following data in bytes (0x00-0xff)
+ * msg[1..3]: The size of the following data in bytes (little endian)
  * == DATA ==
- * msg[2..257]: Data that is processed according to the message type
+ * msg[4..16777218]: Data that is processed according to the message type
  */
 ]]
 
@@ -47,11 +51,15 @@ function serversocket_close()
 end
 
 function serversocket_send(type, msgstring)
-    if msgstring:len() > 0xff then
+    if msgstring:len() > 0xffffff then
         console:error("Message \"" .. msgstring .. "\" is too long!")
         return
     end
-    serversocket:send(string.char(type, msgstring:len()) .. msgstring)
+    local msgstringlen = msgstring:len()
+    serversocket:send(string.char(type,
+        bit32.extract(msgstringlen, 0x00, 8),
+        bit32.extract(msgstringlen, 0x08, 8),
+        bit32.extract(msgstringlen, 0x10, 8)) .. msgstring)
 end
 
 function send_identify()
@@ -71,9 +79,10 @@ end
 -- now only Kirby 0 is used
 
 function send_room()
-
     roomid = emu:read16(AdrRoomidKirby0)
     serversocket_send(MsgRoom, emu:readRange(AdrRoomidKirby0, 2))
+    -- TODO: Send Room Dimensions
+    -- TODO: Send Solidity Map
 end
 
 function send_coordinates()
@@ -87,7 +96,7 @@ function client_frameadvance()
         timer = timer - 1
         return
     end
-    timer = 15
+    timer = WAITING_FRAMES_PER_CYCLE
 
     if ingame then
         if roomid ~= emu:read16(AdrRoomidKirby0) then
@@ -124,6 +133,7 @@ function client_init()
         client_main()
     else
         console:error("Could not connect to server. Please start the minimap application first, and then rerun the script.")
+        console:log("=== Ending Script ===")
     end
 end
 

@@ -24,7 +24,6 @@ void kirbystate_init() {
 
 
 [[nodiscard]] result_t kirbystate_update(u8* message) {
-    // TODO: Update static variables for draw_minimap() to use
     switch (message[0]) {
     case MsgIdentify: {
         // TODO

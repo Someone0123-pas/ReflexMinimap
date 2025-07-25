@@ -7,13 +7,15 @@
  * Messages exchanged with the Lua script will always be only be u8 arrays.
  * == HEADER ==
  * msg[0]: The message type (according to enum Msg)
- * msg[1]: The size of the following data in bytes (0x00-0xff)
+ * msg[1..3]: The size of the following data in bytes (little endian)
  * == DATA ==
- * msg[2..257]: Data that is processed according to the message type
+ * msg[4..16777218]: Data that is processed according to the message type
  */
 
 #define MSG_TYPE(msg) (msg[0])
-#define MSG_ARGS_SIZE(msg) (msg[1])
+#define MSG_ARGS_SIZE(msg) (msg[1] | (msg[2] << 0x8) | (msg[3] << 0x10))
+
+#define IS_HEADER_EMPTY(msg) (msg[0] == 0 && msg[1] == 0 && msg[2] == 0 && msg[3] == 0)
 
 enum Msg {
     MsgIdentify = 0,

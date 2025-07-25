@@ -55,6 +55,7 @@
         gdb
 	      clang-tools
         mgba
+        valgrind
       ];
 
       LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
