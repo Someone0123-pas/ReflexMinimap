@@ -14,8 +14,8 @@
       then sourceInfo.dirtyShortRev
       else sourceInfo.shortRev;
 
-    katam-minimap = pkgs.stdenv.mkDerivation {
-      pname = "katam-minimap";
+    ReflexMinimap = pkgs.stdenv.mkDerivation {
+      pname = "ReflexMinimap";
       version = "0.0.${revision}";
       src = ./.;
 
@@ -42,7 +42,7 @@
       ];
     };
   in {
-    packages.default = katam-minimap;
+    packages.default = ReflexMinimap;
 
     apps.default = flake-utils.lib.mkApp {
       drv = self.packages.${system}.default;

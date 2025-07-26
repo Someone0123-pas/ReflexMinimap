@@ -98,8 +98,8 @@ void kirbystate_init() {
 }
 
 window_draw draw_try_connect(Font* font, Camera2D* camera) {
-    DrawTextEx(*font, "KATAM-Minimap\nby Someone0123-pas\nv0.0.1", (Vector2){20, 20}, 30.0f, 0.5f, BLACK);
-    DrawTextEx(*font, "Listening to port 2346 ...", (Vector2){20, (float)GetScreenHeight() - 45}, 25.0f, 0.0f, DARKPURPLE);
+    DrawTextEx(*font, "ReflexMinimap\nby Someone0123-pas\nv0.0.1", (Vector2){20, 20}, 30.0f, 0.5f, BLACK);
+    DrawTextEx(*font, "Listening on port 2346 ...", (Vector2){20, (float)GetScreenHeight() - 45}, 25.0f, 0.0f, DARKPURPLE);
 }
 
 window_draw draw_connected(Font* font, Camera2D* camera) {

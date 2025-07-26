@@ -177,7 +177,7 @@ int main(void) {
     } break;
     }
 
-    InitWindow(350, 350, "KATAM-Minimap");
+    InitWindow(350, 350, "ReflexMinimap");
     SetTargetFPS(g_fps);
     Font windowfont = LoadFontFromMemory(".ttf", g_pixantiqua_ttf, g_pixantiqua_ttf_len, 200, NULL, 0);
     Camera2D camera = {{(float)GetScreenWidth() / 2.0f, (float)GetScreenHeight() / 2.0f + 10}, {0, 0}, 0.0f, 1.0f};

@@ -19,7 +19,6 @@ void kirbystate_init();
 result_t kirbystate_update(u8* message);
 #define KIRBYSTATE_UPDATE_UNKNOWN_MSGTYPE 1
 
-// TODO: Should all be called with Font as parametre
 /*
  * Functions with this return type draw to the screen with Raylib, so they should only be called in between BeginDrawing() and
  * EndDrawing() control flows.

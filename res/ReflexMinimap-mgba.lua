@@ -1,4 +1,5 @@
--- CONFIGURATION --
+-----------------------
+---- CONFIGURATION ----
 
 -- Send update messages to the server all X messages.
 -- Recommendation: Increase, if the emulator performance degrades when starting this script.
@@ -6,11 +7,12 @@
 WAITING_FRAMES_PER_CYCLE = 2
 
 -- How often the solidity map is refreshed (unlockable doors, broken rocks, etc.) in respect to the WAITING_FRAMES_PER_CYCLE
--- Recommendation: It makes sense for this not to be the same as above (i.e. 1)
+-- Recommendation: It makes sense for this NOT to be the same as above (which would be 1)
 -- Default Value: 4
 WAITING_TIMES_SOLIDITY = 4
 
 -- CONFIGURATION END --
+-----------------------
 
 --[[
 From messageformat.h:
@@ -31,6 +33,7 @@ MsgCoordinates = 3
 MsgRoomDimensions = 4
 MsgSolidity = 5
 
+-- Addresses for the US-ROM
 AdrRoomidKirby0 = 0x02020f40
 AdrXKirby0 = 0x02020f20
 AdrYKirby0 = 0x02020f24
@@ -39,8 +42,6 @@ AdrForegroundTilemaps = 0x08d64520
 AdrSolidityMaps = 0x08d63330
 AdrSolidityMapDecompressed = 0x02024ed0
 AdrNumSolidityMap = 0x02023b8e
-
--- It makes sense not to send the solidity map as often as coordinates
 
 NONUM = 0
 
@@ -167,7 +168,7 @@ function client_main()
 end
 
 function client_init()
-    console:log("=== KATAM-Minimap by Someone0123-pas v0.0.0 ===")
+    console:log("=== ReflexMinimap by Someone0123-pas v0.0.0 ===")
     console:log(string.format("Trying to connect to 127.0.0.1:%d ...", port))
 
     serversocket = socket.tcp()
